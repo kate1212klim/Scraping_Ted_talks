@@ -1,0 +1,53 @@
+#! Python3.10
+# the program gets content of the TED Talk page (the video and the description)
+
+import os
+import logging
+logging.basicConfig(level=logging.DEBUG, format=' %(asctime)s - %(levelname)s - %(message)s')
+logging.disable()
+import requests
+from bs4 import BeautifulSoup
+import re
+
+
+# getting the links to the video from a command line
+urls = iter(input, "quit")
+
+# sending a request using the link(s) provided
+for url in urls:
+    r = requests.get(url)
+    print("Download about to start")
+    soup = BeautifulSoup(r.content, "html.parser")
+
+    # searching for the video mp4
+    id = soup.find(id="__NEXT_DATA__")
+    logging.info(str(id))
+
+    # searching for the title of the video to save the video later
+    title_output = re.search("(?P<title>\"slug\"?:\"[^\s]+\")", str(id)).group(0).split('"')
+    title = max(title_output, key=len)
+    logging.info(str(title))
+
+    # searching for the URL of the mp4 to download the video
+    mp4_url = re.search(r"(?P<url>https?://[^\s]+)(mp4)", str(id)).group(0)
+    logging.info(f"URL: {str(mp4_url)}")
+    print("Downloading video from ---" + f"{mp4_url[0:15]}...{mp4_url[-10::]}")
+    print("Storing video in --- " + title)
+
+    # sending the request to download the video
+    r = requests.get(mp4_url)
+
+    # getting the short description of a video
+    rs = requests.get(url)
+    soup = BeautifulSoup(rs.content, 'html.parser')
+    video_description = soup.find("div", attrs={"text-sm mb-6"})
+
+    # writing to the file
+
+    directory = "D:\Video"  # the directory was created before running the program
+    path = os.path.join(directory, title)   # PATH to the directory where videofile is saved
+    os.mkdir(path)
+    with open(f"{path}\{title}.mp4", 'wb') as f, open(f"{path}\{title}.txt", 'w') as txt_file:
+        f.write(r.content)
+        txt_file.write(video_description.text)
+    print("Process finished")
